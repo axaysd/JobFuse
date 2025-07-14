@@ -310,8 +310,108 @@ async function promptForUserDetails() {
   });
 }
 
-// Add your OpenAI API key here
-const OPENAI_API_KEY = ''; // <-- Replace with your actual key
+// --- OpenAI API Key Storage and Prompt Logic ---
+function getStoredOpenAIApiKey() {
+  const key = localStorage.getItem('jobb_openai_api_key');
+  if (key) {
+    console.log('[JobFuse] OpenAI API key found in localStorage.');
+  } else {
+    console.log('[JobFuse] No OpenAI API key found in localStorage. Will prompt user.');
+  }
+  return key;
+}
+
+function storeOpenAIApiKey(key) {
+  localStorage.setItem('jobb_openai_api_key', key);
+  console.log('[JobFuse] OpenAI API key saved to localStorage.');
+}
+
+function promptForOpenAIApiKey() {
+  injectJobFuseStyles();
+  return new Promise((resolve) => {
+    const existing = document.getElementById('jobb-openai-key-modal');
+    if (existing) existing.remove();
+    const modal = document.createElement('div');
+    modal.id = 'jobb-openai-key-modal';
+    modal.className = 'jobfuse-modal';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.tabIndex = -1;
+    // Card
+    const card = document.createElement('div');
+    card.className = 'jobfuse-modal__card';
+    // Header
+    const header = document.createElement('div');
+    header.className = 'jobfuse-modal__header';
+    const logo = document.createElement('div');
+    logo.className = 'jobfuse-modal__logo';
+    header.appendChild(logo);
+    const title = document.createElement('div');
+    title.className = 'jobfuse-modal__title';
+    title.textContent = 'JobFuse';
+    header.appendChild(title);
+    card.appendChild(header);
+    // Close button
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'jobfuse-modal__close';
+    closeBtn.setAttribute('aria-label', 'Close API key modal');
+    closeBtn.innerHTML = '&times;';
+    closeBtn.onclick = () => { modal.remove(); resolve(null); };
+    card.appendChild(closeBtn);
+    // Progress
+    const progress = document.createElement('div');
+    progress.style.textAlign = 'center';
+    progress.style.margin = '18px 0 0 0';
+    progress.style.fontSize = '15px';
+    progress.style.color = 'var(--jobfuse-brand)';
+    progress.textContent = 'Enter your OpenAI API Key';
+    card.appendChild(progress);
+    // API key input
+    const label = document.createElement('label');
+    label.textContent = 'OpenAI API Key (will be saved for future use):';
+    label.style.margin = '18px 0 8px 0';
+    label.style.fontWeight = '500';
+    card.appendChild(label);
+    const input = document.createElement('input');
+    input.type = 'password';
+    input.style.width = '100%';
+    input.style.margin = '8px 0 0 0';
+    input.style.padding = '10px';
+    input.style.fontSize = '15px';
+    input.style.border = '1px solid #ccc';
+    input.style.borderRadius = '6px';
+    input.style.fontFamily = 'var(--jobfuse-font)';
+    input.required = true;
+    card.appendChild(input);
+    // Error message
+    const errorMsg = document.createElement('div');
+    errorMsg.style.color = '#b30000';
+    errorMsg.style.fontSize = '14px';
+    errorMsg.style.margin = '8px 0 0 0';
+    errorMsg.style.display = 'none';
+    card.appendChild(errorMsg);
+    // Submit button
+    const submitBtn = document.createElement('button');
+    submitBtn.className = 'jobfuse-btn jobfuse-btn--primary';
+    submitBtn.textContent = 'Save & Continue';
+    submitBtn.style.margin = '18px 0 0 0';
+    submitBtn.onclick = () => {
+      if (!input.value.trim()) {
+        errorMsg.textContent = 'Please enter your OpenAI API key.';
+        errorMsg.style.display = 'block';
+        return;
+      }
+      errorMsg.style.display = 'none';
+      storeOpenAIApiKey(input.value.trim());
+      modal.remove();
+      resolve(input.value.trim());
+    };
+    card.appendChild(submitBtn);
+    modal.appendChild(card);
+    document.body.appendChild(modal);
+    input.focus();
+  });
+}
 
 // Import the prompt template
 // (Assume promptTemplate.js is loaded before this script or via a bundler)
@@ -322,7 +422,7 @@ const OPENAI_API_KEY = ''; // <-- Replace with your actual key
 // The variable 'generateLeadSearchPrompt' is available
 
 // Utility to create a modal with tabs and editing
-function showCoverLetterModal({ coverLetter, jobDescription, resume }) {
+function showCoverLetterModal({ coverLetter, jobDescription, resume, openaiKey }) {
   injectJobFuseStyles();
   console.log('[JobFuse] Showing modal.');
   const existing = document.getElementById('jobb-modal');
@@ -354,12 +454,10 @@ function showCoverLetterModal({ coverLetter, jobDescription, resume }) {
   closeBtn.innerHTML = '&times;';
   closeBtn.onclick = () => modal.remove();
   card.appendChild(closeBtn);
-  // Tabs
-  const tabNames = ['Cover Letter', 'Extracted Job Description', 'Extracted Resume', 'Hiring Mgr. Leads'];
+  // Tabs (only Cover Letter and Hiring Mgr. Leads remain)
+  const tabNames = ['Cover Letter', 'Hiring Mgr. Leads'];
   const tabIcons = [
     '<svg width="18" height="18" fill="none" viewBox="0 0 18 18"><rect x="2" y="4" width="14" height="10" rx="2" stroke="#0073b1" stroke-width="1.5"/><path d="M6 8h6" stroke="#0073b1" stroke-width="1.5" stroke-linecap="round"/></svg>',
-    '<svg width="18" height="18" fill="none" viewBox="0 0 18 18"><path d="M3 4h12M3 9h12M3 14h12" stroke="#0073b1" stroke-width="1.5" stroke-linecap="round"/></svg>',
-    '<svg width="18" height="18" fill="none" viewBox="0 0 18 18"><circle cx="9" cy="9" r="7" stroke="#0073b1" stroke-width="1.5"/><path d="M6 12c.5-1 1.5-2 3-2s2.5 1 3 2" stroke="#0073b1" stroke-width="1.5" stroke-linecap="round"/></svg>',
     '<svg width="18" height="18" fill="none" viewBox="0 0 18 18"><path d="M9 2v14M2 9h14" stroke="#0073b1" stroke-width="1.5" stroke-linecap="round"/></svg>'
   ];
   const tabContents = [];
@@ -444,26 +542,81 @@ function showCoverLetterModal({ coverLetter, jobDescription, resume }) {
   copyMsg.style.opacity = '0';
   copyMsg.style.transition = 'opacity 0.2s';
   toolbar.appendChild(copyMsg);
-  // Insert toolbar above coverLetterDiv
+  // --- Add Job Description and Resume buttons ---
+  const detailsBtnRow = document.createElement('div');
+  detailsBtnRow.style.display = 'flex';
+  detailsBtnRow.style.gap = '10px';
+  detailsBtnRow.style.margin = '10px 0 0 0';
+  // Job Description button
+  const jobDescBtn = document.createElement('button');
+  jobDescBtn.className = 'jobfuse-btn jobfuse-btn--accent';
+  jobDescBtn.type = 'button';
+  jobDescBtn.textContent = 'Show Job Description';
+  jobDescBtn.setAttribute('aria-expanded', 'false');
+  detailsBtnRow.appendChild(jobDescBtn);
+  // Resume button
+  const resumeBtn = document.createElement('button');
+  resumeBtn.className = 'jobfuse-btn jobfuse-btn--accent';
+  resumeBtn.type = 'button';
+  resumeBtn.textContent = 'Show Resume';
+  resumeBtn.setAttribute('aria-expanded', 'false');
+  detailsBtnRow.appendChild(resumeBtn);
+  // Expandable panels
+  const jobDescPanel = document.createElement('div');
+  jobDescPanel.style.display = 'none';
+  jobDescPanel.style.margin = '12px 0 0 0';
+  jobDescPanel.style.padding = '16px';
+  jobDescPanel.style.background = '#f8fbff';
+  jobDescPanel.style.border = '1px solid #cce0f5';
+  jobDescPanel.style.borderRadius = '8px';
+  jobDescPanel.style.fontSize = '15px';
+  jobDescPanel.style.maxHeight = '180px';
+  jobDescPanel.style.overflowY = 'auto';
+  jobDescPanel.setAttribute('aria-label', 'Extracted Job Description');
+  jobDescPanel.innerHTML = `<div style='font-weight:600;margin-bottom:8px;'>Extracted Job Description</div><div>${jobDescription.replace(/\n/g, '<br>')}</div>`;
+  const resumePanel = document.createElement('div');
+  resumePanel.style.display = 'none';
+  resumePanel.style.margin = '12px 0 0 0';
+  resumePanel.style.padding = '16px';
+  resumePanel.style.background = '#f8fbff';
+  resumePanel.style.border = '1px solid #cce0f5';
+  resumePanel.style.borderRadius = '8px';
+  resumePanel.style.fontSize = '15px';
+  resumePanel.style.maxHeight = '180px';
+  resumePanel.style.overflowY = 'auto';
+  resumePanel.setAttribute('aria-label', 'Extracted Resume');
+  resumePanel.innerHTML = `<div style='font-weight:600;margin-bottom:8px;'>Extracted Resume</div><div>${resume.replace(/\n/g, '<br>')}</div>`;
+  // Toggle logic
+  jobDescBtn.onclick = () => {
+    const expanded = jobDescPanel.style.display === 'block';
+    jobDescPanel.style.display = expanded ? 'none' : 'block';
+    jobDescBtn.setAttribute('aria-expanded', String(!expanded));
+    if (!expanded) {
+      resumePanel.style.display = 'none';
+      resumeBtn.setAttribute('aria-expanded', 'false');
+    }
+  };
+  resumeBtn.onclick = () => {
+    const expanded = resumePanel.style.display === 'block';
+    resumePanel.style.display = expanded ? 'none' : 'block';
+    resumeBtn.setAttribute('aria-expanded', String(!expanded));
+    if (!expanded) {
+      jobDescPanel.style.display = 'none';
+      jobDescBtn.setAttribute('aria-expanded', 'false');
+    }
+  };
+  // Assemble Cover Letter tab
   const coverLetterTab = document.createElement('div');
   coverLetterTab.className = 'jobfuse-tab-content';
   coverLetterTab.style.display = 'flex';
   coverLetterTab.style.flexDirection = 'column';
   coverLetterTab.appendChild(toolbar);
+  coverLetterTab.appendChild(detailsBtnRow);
   coverLetterTab.appendChild(coverLetterDiv);
-  // Job Description tab
-  const jobDescDiv = document.createElement('div');
-  jobDescDiv.className = 'jobfuse-modal__content';
-  jobDescDiv.style.whiteSpace = 'pre-wrap';
-  jobDescDiv.textContent = jobDescription;
-  jobDescDiv.className += ' jobfuse-tab-content';
-  // Resume tab
-  const resumeDiv = document.createElement('div');
-  resumeDiv.className = 'jobfuse-modal__content';
-  resumeDiv.style.whiteSpace = 'pre-wrap';
-  resumeDiv.textContent = resume;
-  resumeDiv.className += ' jobfuse-tab-content';
-  // Hiring Mgr. Leads tab
+  coverLetterTab.appendChild(jobDescPanel);
+  coverLetterTab.appendChild(resumePanel);
+  // --- End details buttons/panels ---
+  // Hiring Mgr. Leads tab (unchanged)
   const leadsDiv = document.createElement('div');
   leadsDiv.className = 'jobfuse-modal__content';
   leadsDiv.style.display = 'none';
@@ -496,7 +649,7 @@ function showCoverLetterModal({ coverLetter, jobDescription, resume }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Authorization': `Bearer ${openaiKey || getStoredOpenAIApiKey()}`,
         },
         body: JSON.stringify({
           model: 'gpt-4.1',
@@ -542,7 +695,7 @@ function showCoverLetterModal({ coverLetter, jobDescription, resume }) {
   };
   leadsDiv.appendChild(searchLeadsBtn);
   leadsDiv.appendChild(leadUrlsDiv);
-  tabContents.push(coverLetterTab, jobDescDiv, resumeDiv, leadsDiv);
+  tabContents.push(coverLetterTab, leadsDiv);
   // Tab content container
   const tabContentContainer = document.createElement('div');
   tabContentContainer.style.flex = '1';
@@ -616,7 +769,7 @@ function showCoverLetterModal({ coverLetter, jobDescription, resume }) {
       }
       const description = jobDescription;
       const jobMeta = getLinkedInJobMeta ? getLinkedInJobMeta() : {};
-      await generateCoverLetter(description, resumeText, userDetails);
+      await generateCoverLetter(description, resumeText, userDetails, openaiKey);
     } finally {
       generateBtn.disabled = false;
       generateBtn.textContent = 'Generate Cover Letter';
@@ -692,7 +845,7 @@ function getLinkedInJobMeta() {
   return { roleTitle, companyName, location };
 }
 
-async function generateCoverLetter(jobDescription, resume, userDetails) {
+async function generateCoverLetter(jobDescription, resume, userDetails, openaiKey) {
   // Compose user details string for the prompt
   const jobMeta = getLinkedInJobMeta();
   const userDetailsString = `Candidate Details:\nName: ${userDetails.name}\nEmail: ${userDetails.email}\nPhone: ${userDetails.phone}\nAddress: ${userDetails.address}\nUS Visa Status: ${userDetails.visa}`;
@@ -712,7 +865,7 @@ async function generateCoverLetter(jobDescription, resume, userDetails) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${openaiKey || getStoredOpenAIApiKey()}`,
       },
       body: JSON.stringify({
         model: 'gpt-4o',
@@ -733,7 +886,7 @@ async function generateCoverLetter(jobDescription, resume, userDetails) {
     let coverLetter = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content ? data.choices[0].message.content.trim() : null;
     if (coverLetter) {
       console.log('[JobFuse] Cover letter generated successfully.');
-      showCoverLetterModal({ coverLetter, jobDescription, resume });
+      showCoverLetterModal({ coverLetter, jobDescription, resume, openaiKey });
     } else {
       console.error('[JobFuse] No cover letter generated.');
       alert('No cover letter generated.');
@@ -894,6 +1047,15 @@ function createFloatingButton() {
   btn.onblur = () => tooltip.style.opacity = '0';
   btn.onclick = async () => {
     console.log('[JobFuse] Floating button clicked.');
+    let openaiKey = getStoredOpenAIApiKey();
+    if (!openaiKey) {
+      openaiKey = await promptForOpenAIApiKey();
+      if (!openaiKey) {
+        alert('OpenAI API key is required to use JobFuse.');
+        console.log('[JobFuse] User cancelled OpenAI API key input.');
+        return;
+      }
+    }
     let resume = getStoredResume();
     if (!resume) {
       resume = await promptForResume();
@@ -919,7 +1081,8 @@ function createFloatingButton() {
         console.log('[JobFuse] Could not extract job description.');
         return;
       }
-      showCoverLetterModal({ coverLetter: '', jobDescription: description, resume });
+      // Pass the key to the modal for downstream API calls
+      showCoverLetterModal({ coverLetter: '', jobDescription: description, resume, openaiKey });
     } else {
       alert('This feature is only available on LinkedIn job pages.');
       console.log('[JobFuse] Not a LinkedIn job page.');
